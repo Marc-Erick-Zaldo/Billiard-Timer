@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Billiards Timer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800&family=Figtree:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#eef0e6;--ink:#12281f;--card:#fff;--felt:#14543f;--felt-ink:#f1ecd9;--accent:#e8b923;--accent-ink:#1a1500;--muted:#55695f;--line:#cfd6c6;--danger:#b3382c;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0c2a20;--ink:#f1ecd9;--card:#123a2c;--felt:#0a1f18;--felt-ink:#f1ecd9;--accent:#f2c230;--muted:#9bb5a7;--line:#25503f;--danger:#ff8a7a}}
+:root[data-theme="dark"]{--bg:#0c2a20;--ink:#f1ecd9;--card:#123a2c;--felt:#0a1f18;--felt-ink:#f1ecd9;--accent:#f2c230;--muted:#9bb5a7;--line:#25503f;--danger:#ff8a7a}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Figtree,system-ui,sans-serif;line-height:1.4;min-height:100vh}
+main{max-width:640px;margin:0 auto;padding:16px}
+h1{font:800 1.5rem/1 "Big Shoulders Display",Impact,sans-serif;letter-spacing:.04em;margin:8px 0 16px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
+.panel h2{font-size:1rem;margin:0 0 10px}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+button,input{font:inherit;color:inherit}
+button{min-height:48px;padding:10px 14px;border-radius:10px;border:2px solid var(--line);background:transparent;font-weight:700;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+button[aria-pressed="true"]{border-color:var(--accent);background:var(--felt);color:var(--felt-ink)}
+.chips{display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:8px}
+.row{display:flex;gap:8px;margin-top:10px}
+input[type=text]{flex:1;min-width:0;min-height:48px;padding:10px 12px;border-radius:10px;border:2px solid var(--line);background:transparent}
+.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);width:100%;font-size:1.1rem}
+.danger{border-color:var(--danger);color:var(--danger)}
+.hint{color:var(--muted);font-size:.9rem;margin:8px 0 0}
+.felt{background:var(--felt);color:var(--felt-ink);border-radius:18px;padding:24px 16px;text-align:center;margin-bottom:14px}
+.felt .label{opacity:.8;font-size:.95rem}
+.time{font:800 clamp(4rem,22vw,8rem)/1 "Big Shoulders Display",Impact,sans-serif;font-variant-numeric:tabular-nums;letter-spacing:.02em;margin:6px 0}
+.price{font:800 clamp(2.4rem,11vw,3.6rem)/1 "Big Shoulders Display",Impact,sans-serif;color:var(--accent);font-variant-numeric:tabular-nums}
+.next{opacity:.85;font-size:.95rem;margin-top:8px}
+.over .time{color:var(--accent)}
+.alert{background:var(--danger);color:#fff;border-radius:12px;padding:12px 14px;margin-bottom:14px;font-weight:700}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.actions .wide{grid-column:1/-1}
+dialog{border:none;border-radius:16px;padding:20px;background:var(--card);color:var(--ink);width:min(92vw,380px)}
+dialog::backdrop{background:rgba(0,0,0,.55)}
+dl{display:grid;grid-template-columns:1fr auto;gap:6px 12px;margin:12px 0}
+dd{margin:0;font-weight:700;text-align:right}
+.total{font:800 2.6rem/1 "Big Shoulders Display",Impact,sans-serif;color:var(--felt);text-align:center;margin:8px 0 14px}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .total{color:var(--accent)}}
+.rates{width:100%;border-collapse:collapse;font-size:.9rem}
+.rates td{padding:4px 0;border-top:1px solid var(--line)}
+.rates td:last-child{text-align:right;font-weight:700}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main>
+<h1>BILLIARDS TIMER</h1>
+
+<section id="setup">
+  <div class="panel">
+    <h2>Timer type</h2>
+    <div class="seg">
+      <button id="mOpen" aria-pressed="true">Open hour</button>
+      <button id="mSet" aria-pressed="false">Set time</button>
+    </div>
+    <p class="hint" id="modeHint">Counts up from zero. The customer pays for the time played.</p>
+  </div>
+  <div class="panel" id="durPanel" hidden>
+    <h2>How long?</h2>
+    <div class="chips" id="chips"></div>
+    <div class="row">
+      <input type="text" id="customHrs" inputmode="decimal" placeholder="Custom hours, e.g. 1.5" aria-label="Custom hours">
+    </div>
+    <p class="hint" id="durErr" style="color:var(--danger)" hidden></p>
+  </div>
+  <button class="primary" id="startBtn">Start timer</button>
+  <div class="panel" style="margin-top:14px">
+    <h2>Rates</h2>
+    <table class="rates">
+      <tr><td>Up to 30 min</td><td>₱50</td></tr>
+      <tr><td>Up to 45 min</td><td>₱70</td></tr>
+      <tr><td>Up to 60 min</td><td>₱100</td></tr>
+      <tr><td>Every extra hour</td><td>+₱100</td></tr>
+    </table>
+  </div>
+</section>
+
+<section id="run" hidden>
+  <div id="alert" class="alert" hidden>Time's up. Extend or end the session.</div>
+  <div class="felt" id="felt">
+    <div class="label" id="tLabel">Time played</div>
+    <div class="time" id="time" role="timer" aria-live="off">00:00:00</div>
+    <div class="label">Amount to pay</div>
+    <div class="price" id="price">₱0</div>
+    <div class="next" id="next"></div>
+  </div>
+  <div class="panel" id="addPanel" hidden>
+    <h2>Add time</h2>
+    <div class="chips">
+      <button data-add="1">+ 1 hour</button>
+      <button data-add="2">+ 2 hours</button>
+    </div>
+    <div class="row">
+      <input type="text" id="addHrs" inputmode="decimal" placeholder="Hours to add" aria-label="Hours to add">
+      <button id="addBtn">Add</button>
+    </div>
+    <p class="hint" id="addErr" style="color:var(--danger)" hidden></p>
+  </div>
+  <div class="actions">
+    <button id="extendBtn" class="primary wide" hidden>Extend 30 min</button>
+    <button id="pauseBtn">Pause</button>
+    <button id="endBtn" class="danger">End timer</button>
+  </div>
+</section>
+</main>
+
+<dialog id="summary">
+  <h2 style="margin:0">Session ended</h2>
+  <dl id="sumList"></dl>
+  <div class="total" id="sumTotal"></div>
+  <button class="primary" id="doneBtn">Done</button>
+</dialog>
+
+<script>
+(function(){
+var $=function(i){return document.getElementById(i)};
+var KEY="billiards-timer-v1";
+var S={mode:"open",run:false,paused:false,start:0,acc:0,total:3600};
+var pickHrs=1, ctx=null, alarmed=false;
+
+function save(){try{localStorage.setItem(KEY,JSON.stringify({S:S,alarmed:alarmed}))}catch(e){}}
+function load(){try{var d=JSON.parse(localStorage.getItem(KEY)||"null");if(d&&d.S&&d.S.run){S=d.S;alarmed=!!d.alarmed;return true}}catch(e){}return false}
+function clear(){try{localStorage.removeItem(KEY)}catch(e){}}
+
+/* Pricing: 30 min = 50, 45 min = 70, 60 min = 100, then +100 per full hour */
+function price(sec){
+  if(sec<=0)return 0;
+  var m=Math.ceil(sec/60), full=Math.floor(m/60), r=m%60;
+  var part=r===0?0:r<=30?50:r<=45?70:100;
+  return full*100+part;
+}
+function nextStep(sec){
+  var cur=price(sec), m=Math.ceil(sec/60);
+  for(var k=m+1;k<=m+61;k++){ if(price(k*60)>cur) return {at:(k-1)*60-sec,to:price(k*60)}; }
+  return null;
+}
+function elapsed(){return S.acc+(S.run&&!S.paused?(Date.now()-S.start)/1000:0)}
+function pad(n){return n<10?"0"+n:""+n}
+function fmt(s){s=Math.max(0,Math.floor(s));return pad(Math.floor(s/3600))+":"+pad(Math.floor(s%3600/60))+":"+pad(s%60)}
+function peso(n){return "₱"+n.toLocaleString("en-PH")}
+function hrsLabel(sec){var h=sec/3600;return (Math.round(h*100)/100)+" hr"+(h===1?"":"s")}
+function parseHrs(v){var n=parseFloat(String(v).replace(",","."));return (isFinite(n)&&n>0&&n<=24)?n:null}
+
+/* Setup */
+var chipDefs=[[0.5,"30 min"],[0.75,"45 min"],[1,"1 hour"],[2,"2 hours"]];
+function buildChips(){
+  var box=$("chips");box.innerHTML="";
+  chipDefs.forEach(function(c){
+    var b=document.createElement("button");b.textContent=c[1];
+    b.setAttribute("aria-pressed",String(pickHrs===c[0]&&!$("customHrs").value));
+    b.onclick=function(){pickHrs=c[0];$("customHrs").value="";$("durErr").hidden=true;buildChips()};
+    box.appendChild(b);
+  });
+}
+function setMode(m){
+  S.mode=m;
+  $("mOpen").setAttribute("aria-pressed",String(m==="open"));
+  $("mSet").setAttribute("aria-pressed",String(m==="set"));
+  $("durPanel").hidden=m==="open";
+  $("modeHint").textContent=m==="open"
+    ?"Counts up from zero. The customer pays for the time played."
+    :"Counts down from the time you choose. You can add time anytime.";
+}
+$("mOpen").onclick=function(){setMode("open")};
+$("mSet").onclick=function(){setMode("set")};
+$("customHrs").oninput=function(){buildChips()};
+
+$("startBtn").onclick=function(){
+  var total=3600;
+  if(S.mode==="set"){
+    var cv=$("customHrs").value.trim();
+    var h=cv?parseHrs(cv):pickHrs;
+    if(!h){$("durErr").textContent="Enter hours between 0.1 and 24, like 1.5.";$("durErr").hidden=false;return}
+    total=Math.round(h*3600);
+  }
+  try{ctx=ctx||new (window.AudioContext||window.webkitAudioContext)()}catch(e){}
+  S.run=true;S.paused=false;S.start=Date.now();S.acc=0;S.total=total;alarmed=false;
+  save();show();
+};
+
+/* Running */
+function show(){
+  $("setup").hidden=S.run;$("run").hidden=!S.run;
+  var set=S.mode==="set";
+  $("addPanel").hidden=!set;
+  render();
+}
+function beep(){
+  try{
+    ctx=ctx||new (window.AudioContext||window.webkitAudioContext)();
+    for(var i=0;i<3;i++){
+      var o=ctx.createOscillator(),g=ctx.createGain();
+      o.frequency.value=880;o.connect(g);g.connect(ctx.destination);
+      var t=ctx.currentTime+i*0.4;
+      g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.4,t+0.02);g.gain.exponentialRampToValueAtTime(0.0001,t+0.3);
+      o.start(t);o.stop(t+0.32);
+    }
+  }catch(e){}
+  if(navigator.vibrate)navigator.vibrate([300,150,300]);
+}
+function render(){
+  if(!S.run)return;
+  var e=elapsed(), set=S.mode==="set", left=S.total-e, over=set&&left<=0;
+  var billed=set?Math.max(S.total,e):e;
+  $("price").textContent=peso(price(billed));
+  $("felt").classList.toggle("over",over);
+  if(!set){
+    $("tLabel").textContent=S.paused?"Paused":"Time played";
+    $("time").textContent=fmt(e);
+    var n=nextStep(e);
+    $("next").textContent=n?"Goes up to "+peso(n.to)+" in "+fmt(n.at).slice(3):"";
+  }else{
+    $("tLabel").textContent=S.paused?"Paused":over?"Overtime":"Time left";
+    $("time").textContent=fmt(over?-left:left);
+    $("next").textContent="Booked: "+hrsLabel(S.total)+(over?" · billed for time played":"");
+  }
+  $("alert").hidden=!over;
+  $("extendBtn").hidden=!set;
+  if(over&&!alarmed&&!S.paused){alarmed=true;beep();save()}
+}
+setInterval(render,250);
+document.addEventListener("visibilitychange",render);
+
+function addSeconds(sec){
+  S.total+=sec;
+  if(S.total-elapsed()>0)alarmed=false;
+  save();render();
+}
+document.querySelectorAll("[data-add]").forEach(function(b){
+  b.onclick=function(){addSeconds(parseFloat(b.dataset.add)*3600);$("addErr").hidden=true};
+});
+$("addBtn").onclick=function(){
+  var h=parseHrs($("addHrs").value);
+  if(!h){$("addErr").textContent="Enter hours between 0.1 and 24, like 1.5.";$("addErr").hidden=false;return}
+  $("addErr").hidden=true;$("addHrs").value="";addSeconds(Math.round(h*3600));
+};
+$("extendBtn").onclick=function(){
+  // If overtime already ran, extension starts from the booked end so the customer isn't double-billed.
+  addSeconds(1800);
+};
+$("pauseBtn").onclick=function(){
+  if(S.paused){S.paused=false;S.start=Date.now()}
+  else{S.acc=elapsed();S.paused=true}
+  $("pauseBtn").textContent=S.paused?"Resume":"Pause";
+  save();render();
+};
+$("endBtn").onclick=function(){
+  var e=elapsed(), set=S.mode==="set", billed=set?Math.max(S.total,e):e;
+  var rows=[["Type",set?"Set time":"Open hour"],["Time played",fmt(e)]];
+  if(set)rows.push(["Booked",hrsLabel(S.total)]);
+  $("sumList").innerHTML=rows.map(function(r){return "<dt>"+r[0]+"</dt><dd>"+r[1]+"</dd>"}).join("");
+  $("sumTotal").textContent=peso(price(billed));
+  $("summary").showModal();
+};
+$("doneBtn").onclick=function(){
+  $("summary").close();
+  S={mode:S.mode,run:false,paused:false,start:0,acc:0,total:3600};
+  $("pauseBtn").textContent="Pause";
+  clear();show();setMode(S.mode);
+};
+
+buildChips();
+if(load()){setMode(S.mode);$("pauseBtn").textContent=S.paused?"Resume":"Pause";show()}
+else setMode("open");
+})();
+</script>
+</body>
+</html>
